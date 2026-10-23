@@ -2,7 +2,7 @@
 function safeStoredObject(key,fallback){try{const x=JSON.parse(localStorage.getItem(key)||"null");return x&&typeof x==="object"&&!Array.isArray(x)?x:fallback}catch{return fallback}}
 function safeStoredMessages(){try{const x=JSON.parse(localStorage.getItem("zara_history")||"[]");return Array.isArray(x)?x.filter(m=>m&&["user","assistant"].includes(m.role)&&typeof m.content==="string").slice(-60):[]}catch{return []}}
 const defaults={name:"Zara",language:"Roman Urdu",welcome:"Assalam o alaikum! Main Zara hoon. Aaj kaisa din guzra?",instructions:"You are Zara, a kind, witty adult AI companion. Reply in the user's language. Normal is friendly, romantic is affectionate, adult is playful/flirty but never sexually explicit. Do not pretend to be human.",examples:"",endpoint:""};
-const cfg={...defaults,...safeStoredObject("zara_settings",{})};
+const stored=safeStoredObject("zara_settings",{});const cfg={...defaults};for(const key of Object.keys(defaults)){if(typeof stored[key]==="string"&&stored[key].length<=20000)cfg[key]=stored[key];}if(cfg.endpoint&&!/^https:\/\//i.test(cfg.endpoint))cfg.endpoint="";
 const el=id=>document.getElementById(id), messages=el("messages");let history=safeStoredMessages(), voice=false, imageData="";
 function add(role,content){let d=document.createElement("div");d.className="bubble "+role;d.textContent=content;messages.append(d);messages.scrollTop=messages.scrollHeight;}
 function render(){messages.replaceChildren();if(!history.length)add("assistant",cfg.welcome);history.forEach(m=>add(m.role==="user"?"user":"assistant",m.content));}render();
