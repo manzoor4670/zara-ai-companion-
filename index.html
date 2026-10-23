@@ -6,7 +6,7 @@ const cfg={...defaults,...safeStoredObject("zara_settings",{})};
 const el=id=>document.getElementById(id), messages=el("messages");let history=safeStoredMessages(), voice=false, imageData="";
 function add(role,content){let d=document.createElement("div");d.className="bubble "+role;d.textContent=content;messages.append(d);messages.scrollTop=messages.scrollHeight;}
 function render(){messages.replaceChildren();if(!history.length)add("assistant",cfg.welcome);history.forEach(m=>add(m.role==="user"?"user":"assistant",m.content));}render();
-function save(){localStorage.setItem("zara_history",JSON.stringify(history.slice(-60)));}
+function save(){try{localStorage.setItem("zara_history",JSON.stringify(history.slice(-60)));}catch(error){el("status").textContent="Phone browser storage full. Export Chat backup and free up space.";}}
 function say(s){if(!voice||!("speechSynthesis" in window))return;let u=new SpeechSynthesisUtterance(s);u.lang=/[\u0600-\u06ff]/.test(s)?"ur-PK":"en-US";speechSynthesis.speak(u);}
 function demo(s){let greeting=/salam|hello|hi|assalam|سلام/i.test(s);if(greeting)return cfg.welcome;return el("mode").value==="normal"?"Main sun rahi hoon. Apne din ke bare mein aur bataiye.":el("mode").value==="romantic"?"Aap se baat karke achha lagta hai 💗 Aur sunao, kya chal raha hai?":"Aaj aap ka andaz bara playful hai 😉 Batao, kya baat karni hai?";}
 let retryPayload=null;
