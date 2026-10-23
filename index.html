@@ -10,10 +10,13 @@ function save(){localStorage.setItem("zara_history",JSON.stringify(history.slice
 function say(s){if(!voice||!("speechSynthesis" in window))return;let u=new SpeechSynthesisUtterance(s);u.lang=/[\u0600-\u06ff]/.test(s)?"ur-PK":"en-US";speechSynthesis.speak(u);}
 function demo(s){let greeting=/salam|hello|hi|assalam|سلام/i.test(s);if(greeting)return cfg.welcome;return el("mode").value==="normal"?"Main sun rahi hoon. Apne din ke bare mein aur bataiye.":el("mode").value==="romantic"?"Aap se baat karke achha lagta hai 💗 Aur sunao, kya chal raha hai?":"Aaj aap ka andaz bara playful hai 😉 Batao, kya baat karni hai?";}
 let retryPayload=null;
+let requestInFlight=false;
 async function send(retry=false){
+ if(requestInFlight)return;
+ requestInFlight=true;
  let s=retry&&retryPayload?retryPayload.message:el("message").value.trim();
  let attachment=retry&&retryPayload?retryPayload.image:imageData;
- if(!s&&!attachment)return;
+ if(!s&&!attachment){requestInFlight=false;return;}
  if(!retry){retryPayload=null;history.push({role:"user",content:s||"[Image]"});add("user",s||"[Image]");el("message").value="";save();}
  el("send").disabled=true;el("retry").hidden=true;
  el("status").textContent="Preparing reply...";
@@ -33,7 +36,7 @@ async function send(retry=false){
  }catch(e){
   retryPayload={message:s,image:attachment};el("retry").hidden=false;
   el("status").textContent=e.name==="AbortError"?"AI request timed out. Tap Retry.":"AI connection failed: "+e.message+". Tap Retry; your message is saved.";
- }finally{el("send").disabled=false;}
+ }finally{requestInFlight=false;el("send").disabled=false;}
 }
 el("retry").onclick=()=>{if(retryPayload)send(true);};
 el("checkConnection").onclick=async()=>{const status=el("aiHealth"),button=el("checkConnection");if(!cfg.endpoint){status.textContent="Demo mode only. Open Admin & Training and add a secure AI endpoint to enable real answers.";return;}button.disabled=true;status.textContent="Checking AI connection...";try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);let response;try{response=await fetch(cfg.endpoint,{method:"GET",cache:"no-store",signal:controller.signal});}finally{clearTimeout(timer);}if(!response.ok)throw Error("HTTP "+response.status);const data=await response.json();if(data.ready===true)status.textContent="✅ AI server reports ready. Send a message to verify chat replies.";else if(data.ready===false)status.textContent="⚠️ Server online but not ready: "+String(data.notice||"AI service unavailable");else status.textContent="Server responds, but AI readiness cannot be confirmed. Try a chat message."; }catch(error){status.textContent="Connection check failed: "+error.message+". Check the endpoint in Admin & Training.";}finally{button.disabled=false;}};
