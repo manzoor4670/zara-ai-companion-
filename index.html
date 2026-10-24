@@ -33,7 +33,7 @@ async function send(retry=false){
    reply=data.reply;retryPayload=null;el("status").textContent="AI response received.";
   }
   history.push({role:"assistant",content:reply});add("assistant",reply);save();say(reply);
-  if(imageData===attachment){imageData="";el("image").value="";el("preview").replaceChildren();}
+  if(attachment&&imageData===attachment){imageData="";el("image").value="";el("preview").replaceChildren();}
  }catch(e){
   retryPayload={message:s,image:attachment};el("retry").hidden=false;
   el("status").textContent=e.name==="AbortError"?"AI request timed out after 25 seconds. Tap Retry.":(!navigator.onLine?"Your phone appears offline. Reconnect to internet, then tap Retry.":"AI connection failed: "+e.message+". Tap Retry; your message is saved.");
