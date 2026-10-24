@@ -32,7 +32,7 @@ async function send(retry=false){
    reply=data.reply;retryPayload=null;el("status").textContent="AI response received.";
   }
   history.push({role:"assistant",content:reply});add("assistant",reply);save();say(reply);
-  imageData="";el("image").value="";el("preview").replaceChildren();
+  if(imageData===attachment){imageData="";el("image").value="";el("preview").replaceChildren();}
  }catch(e){
   retryPayload={message:s,image:attachment};el("retry").hidden=false;
   el("status").textContent=e.name==="AbortError"?"AI request timed out. Tap Retry.":"AI connection failed: "+e.message+". Tap Retry; your message is saved.";
