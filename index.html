@@ -33,7 +33,7 @@ async function send(retry=false){
   if(!cfg.endpoint){reply=demo(s);el("status").textContent=attachment?"Demo mode: image was NOT analyzed. Your photo remains selected for later use.":"Demo mode: this is a sample reply, not AI.";retryPayload=null;}
   else{
    if(typeof navigator.onLine==="boolean"&&!navigator.onLine)throw Error("Phone is offline. Reconnect to the internet");
-   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);
+   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),50000);
    let response;
    try{response=await fetch(cfg.endpoint,{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({message:s,mode:el("mode").value,language:cfg.language,instructions:cfg.instructions,examples:cfg.examples,history:history.slice(0,-1).slice(-12),image:attachment})});}finally{clearTimeout(timer);}
    if(!response.ok){let detail="";try{const body=await response.json();if(typeof body.error==="string")detail=body.error.slice(0,250);}catch{}if(response.status===401||response.status===403)throw Error(detail||"AI endpoint access denied (HTTP "+response.status+")");if(response.status===404)throw Error(detail||"AI endpoint not found (HTTP 404)");if(response.status===429)throw Error(detail||"AI service rate limit reached (HTTP 429)");throw Error(detail||"Server HTTP "+response.status);}
@@ -44,7 +44,7 @@ async function send(retry=false){
   if(cfg.endpoint&&attachment&&imageData===attachment){imageData="";el("image").value="";el("preview").replaceChildren();}
  }catch(e){
   retryPayload={message:s,image:attachment};el("retry").hidden=false;
-  el("status").textContent=e.name==="AbortError"?"AI request timed out after 25 seconds. Tap Retry.":(!navigator.onLine?"Your phone appears offline. Reconnect to internet, then tap Retry.":"AI connection failed: "+e.message+". Tap Retry; your message is saved.");
+  el("status").textContent=e.name==="AbortError"?"AI request timed out after 50 seconds. Tap Retry.":(!navigator.onLine?"Your phone appears offline. Reconnect to internet, then tap Retry.":"AI connection failed: "+e.message+". Tap Retry; your message is saved.");
  }finally{requestInFlight=false;el("send").disabled=false;}
 }
 el("retry").onclick=()=>{if(!retryPayload||requestInFlight)return;const last=history[history.length-1];if(last?.role!=="user"||last.content!==(retryPayload.message||"[Image]")){retryPayload=null;el("retry").hidden=true;el("status").textContent="Old retry cleared. Send a new message.";return;}send(true);};
