@@ -21,7 +21,7 @@ async function discoverModel(apiKey){
  const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models",{headers:{"x-goog-api-key":apiKey},signal:AbortSignal.timeout(15000)});
  if(!response.ok)return {problem:await classifyProviderError(response)};
  const data=await response.json();
- const allowed=(data.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes("generateContent")).map(m=>String(m.name||"").replace(/^models\\//,""));
+ const allowed=(data.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes("generateContent")).map(m=>String(m.name||"").replace(/^models\//,""));
  const preferred=allowed.filter(id=>/^gemini-/.test(id)&&/flash/.test(id)&&!/(image|tts|audio|live|embedding|computer|nano-banana)/.test(id));
  preferred.sort((a,b)=>{
   const rank=x=>(x.includes("flash-lite")?0:x.includes("flash")?1:2);
