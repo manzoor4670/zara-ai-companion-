@@ -24,7 +24,7 @@ document.getElementById("endpoint").addEventListener("input",updateModeNotice);u
 document.getElementById("testConnection").onclick=async()=>{
  const status=document.getElementById("connectionStatus"),button=document.getElementById("testConnection");
  const endpoint=document.getElementById("endpoint").value.trim();
- if(!/^https:\/\//i.test(endpoint)){status.textContent="AI Connection: HTTPS Worker URL pehle enter karein.";return;}
+ if(!/^https:\/\//i.test(endpoint)){status.textContent="AI Connection: HTTPS Worker URL pehle enter karein.";return;}if(typeof navigator.onLine==="boolean"&&!navigator.onLine){status.textContent="Phone offline hai. Internet connect karke dobara check karein.";return;}
  button.disabled=true;status.textContent="AI Connection: Checking...";
  try{
   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);let response;try{response=await fetch(endpoint,{method:"GET",cache:"no-store",signal:controller.signal});}finally{clearTimeout(timeout);}
