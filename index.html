@@ -22,7 +22,7 @@ async function send(retry=false){
  el("status").textContent="Preparing reply...";
  try{
   let reply="";
-  if(!cfg.endpoint){reply=demo(s);el("status").textContent="Demo mode: this is a sample reply, not AI.";retryPayload=null;}
+  if(!cfg.endpoint){reply=demo(s);el("status").textContent=attachment?"Demo mode: image was NOT analyzed. Your photo remains selected for later use.":"Demo mode: this is a sample reply, not AI.";retryPayload=null;}
   else{
    if(typeof navigator.onLine==="boolean"&&!navigator.onLine)throw Error("Phone is offline. Reconnect to the internet");
    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);
@@ -33,7 +33,7 @@ async function send(retry=false){
    reply=data.reply;retryPayload=null;el("status").textContent="AI response received.";
   }
   history.push({role:"assistant",content:reply});add("assistant",reply);save();say(reply);
-  if(attachment&&imageData===attachment){imageData="";el("image").value="";el("preview").replaceChildren();}
+  if(cfg.endpoint&&attachment&&imageData===attachment){imageData="";el("image").value="";el("preview").replaceChildren();}
  }catch(e){
   retryPayload={message:s,image:attachment};el("retry").hidden=false;
   el("status").textContent=e.name==="AbortError"?"AI request timed out after 25 seconds. Tap Retry.":(!navigator.onLine?"Your phone appears offline. Reconnect to internet, then tap Retry.":"AI connection failed: "+e.message+". Tap Retry; your message is saved.");
