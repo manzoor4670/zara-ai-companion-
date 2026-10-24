@@ -16,7 +16,7 @@ async function send(retry=false){
  requestInFlight=true;
  let s=retry&&retryPayload?retryPayload.message:el("message").value.trim();
  let attachment=retry&&retryPayload?retryPayload.image:imageData;
- if(!s&&!attachment){requestInFlight=false;return;}if(s.length>5000){requestInFlight=false;el("status").textContent="Message too long (max 5,000 characters). Shorten it before sending.";return;}
+ if(!s&&!attachment){requestInFlight=false;return;}if(!cfg.endpoint&&!s&&attachment){requestInFlight=false;el("status").textContent="Demo cannot analyze photos. Keep this photo selected and type a message, or connect a real AI service.";return;}if(s.length>5000){requestInFlight=false;el("status").textContent="Message too long (max 5,000 characters). Shorten it before sending.";return;}
  if(!retry){retryPayload=null;history.push({role:"user",content:s||"[Image]"});add("user",s||"[Image]");el("message").value="";try{localStorage.removeItem(DRAFT_KEY);}catch{}save();}
  el("send").disabled=true;el("retry").hidden=true;
  el("status").textContent="Preparing reply...";
