@@ -16,7 +16,7 @@ async function send(retry=false){
  requestInFlight=true;
  let s=retry&&retryPayload?retryPayload.message:el("message").value.trim();
  let attachment=retry&&retryPayload?retryPayload.image:imageData;
- if(!s&&!attachment){requestInFlight=false;return;}
+ if(!s&&!attachment){requestInFlight=false;return;}if(s.length>10000){requestInFlight=false;el("status").textContent="Message too long (max 10,000 characters). Shorten it before sending.";return;}
  if(!retry){retryPayload=null;history.push({role:"user",content:s||"[Image]"});add("user",s||"[Image]");el("message").value="";try{localStorage.removeItem(DRAFT_KEY);}catch{}save();}
  el("send").disabled=true;el("retry").hidden=true;
  el("status").textContent="Preparing reply...";
@@ -28,7 +28,7 @@ async function send(retry=false){
    let response;
    try{response=await fetch(cfg.endpoint,{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({message:s,mode:el("mode").value,language:cfg.language,instructions:cfg.instructions,examples:cfg.examples,history:history.slice(-12),image:attachment})});}finally{clearTimeout(timer);}
    if(!response.ok)throw Error("Server HTTP "+response.status);
-   const data=await response.json();if(typeof data.reply!=="string"||!data.reply.trim())throw Error("Server returned no valid reply");
+   const data=await response.json();if(typeof data.reply!=="string"||!data.reply.trim())throw Error("Server returned no valid reply");if(data.reply.length>10000)throw Error("AI reply too long (max 10,000 characters)");
    reply=data.reply;retryPayload=null;el("status").textContent="AI response received.";
   }
   history.push({role:"assistant",content:reply});add("assistant",reply);save();say(reply);
