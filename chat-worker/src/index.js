@@ -7,14 +7,28 @@ const basePrompt="You are Zara, a fictional adult AI companion. Respond naturall
 // Cache a working model per Worker instance; never store the API key in browser code.
 let activeModel="gemini-2.5-flash";
 let modelExpires=0;
-const PREFERRED=["gemini-2.5-flash-lite","gemini-3.1-flash-lite","gemini-3.5-flash-lite","gemini-3.6-flash","gemini-3.8-flash","gemini-2.5-flash"];
+// Gemini's official models.list endpoint permits an omitted pageSize.
+async function classifyProviderError(response){
+ let detail="";
+ try{const payload=await response.json();detail=String(payload?.error?.message||"").toLowerCase()}catch{}
+ if(/api key not valid|invalid api key|api_key_invalid|api key expired|api key was not found|api key.*invalid/.test(detail))return {error:"Gemini API key invalid ya expired hai. Google AI Studio mein key verify karein, phir Cloudflare secret update karein.",code:"GEMINI_INVALID_KEY"};
+ if(/api key.*blocked|permission denied|restricted|not authorized|api has not been used|api not enabled/.test(detail))return {error:"Gemini API key par permission ya restriction ka issue hai. Google AI Studio settings check karein.",code:"GEMINI_PERMISSION"};
+ if(/billing|quota|limit exceeded|resource exhausted/.test(detail))return {error:"Gemini quota ya billing restriction hai. Account limits check karein.",code:"GEMINI_QUOTA"};
+ return {error:"Gemini API ne HTTP "+response.status+" diya. Model access ya API key project configuration check karein.",code:"GEMINI_PROVIDER_"+response.status};
+}
 async function discoverModel(apiKey){
- const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",{headers:{"x-goog-api-key":apiKey},signal:AbortSignal.timeout(15000)});
- if(!response.ok)return {error:"Gemini model list unavailable (HTTP "+response.status+"). Check API key/model permissions."};
+ // Do not send or expose the secret to the browser.
+ const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models",{headers:{"x-goog-api-key":apiKey},signal:AbortSignal.timeout(15000)});
+ if(!response.ok)return {problem:await classifyProviderError(response)};
  const data=await response.json();
- const allowed=new Set((data.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes("generateContent")).map(m=>String(m.name||"").replace(/^models\//,"")));
- const model=PREFERRED.find(id=>allowed.has(id)&&id!==activeModel)||PREFERRED.find(id=>allowed.has(id));
- return model?{model}:{error:"No supported Gemini Flash chat model is available for this API key."};
+ const allowed=(data.models||[]).filter(m=>Array.isArray(m.supportedGenerationMethods)&&m.supportedGenerationMethods.includes("generateContent")).map(m=>String(m.name||"").replace(/^models\\//,""));
+ const preferred=allowed.filter(id=>/^gemini-/.test(id)&&/flash/.test(id)&&!/(image|tts|audio|live|embedding|computer|nano-banana)/.test(id));
+ preferred.sort((a,b)=>{
+  const rank=x=>(x.includes("flash-lite")?0:x.includes("flash")?1:2);
+  return rank(a)-rank(b)||b.localeCompare(a,undefined,{numeric:true});
+ });
+ const model=preferred[0]||allowed.find(id=>/^gemini-/.test(id)&&!/(image|tts|audio|live|embedding)/.test(id));
+ return model?{model}:{problem:{error:"Is API key par chat ke liye Gemini model nazar nahi aa raha.",code:"GEMINI_NO_MODEL"}};
 }
 export default {async fetch(request,env){
  const origin=request.headers.get("Origin");
@@ -54,13 +68,14 @@ export default {async fetch(request,env){
  if(response.status===404){
   // Model availability differs by API key and can change over time.
   const discovery=await discoverModel(env.GEMINI_API_KEY);
-  if(!discovery.model)return reply({error:discovery.error||"No compatible model found.",code:"GEMINI_MODEL"},502);
+  if(!discovery.model)return reply(discovery.problem||{error:"No compatible Gemini model found.",code:"GEMINI_MODEL"},502);
   model=discovery.model;
   response=await callGemini(model);
   if(response.ok){activeModel=model;modelExpires=Date.now()+3600000;}
  }
  if(!response.ok){
   if(response.status===429)return reply({error:"Gemini quota/rate limit reached. Please try later.",code:"GEMINI_RATE_LIMIT"},429);
+  if(response.status===400)return reply(await classifyProviderError(response),502);
   if(response.status===401||response.status===403)return reply({error:"Gemini API key rejected or access denied. Check Cloudflare Secret.",code:"GEMINI_AUTH"},502);
   if(response.status===404)return reply({error:"Gemini model is unavailable for this API key. Check the model permissions in Google AI Studio.",code:"GEMINI_MODEL"},502);
   return reply({error:"AI provider failed (HTTP "+response.status+").",code:"GEMINI_UNAVAILABLE"},502);
