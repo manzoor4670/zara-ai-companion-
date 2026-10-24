@@ -18,7 +18,7 @@ async function openRouterReply(env,system,prior,message,image){
  try{
   const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
    method:"POST",headers:{"Authorization":"Bearer "+env.OPENROUTER_API_KEY,"Content-Type":"application/json","HTTP-Referer":"https://manzoor4670.github.io/zara-ai-companion-","X-Title":"Zara AI Companion"},
-   body:JSON.stringify({model:"openrouter/free",messages,max_tokens:180,temperature:0.4}),
+   body:JSON.stringify({model:"qwen/qwen3.8-27b:free",messages,max_tokens:350,temperature:0.45}),
    signal:AbortSignal.timeout(40000)
   });
   if(!response.ok){
@@ -28,7 +28,7 @@ async function openRouterReply(env,system,prior,message,image){
   const payload=await response.json();
   const content=payload.choices?.[0]?.message?.content;
   const answer=typeof content==="string"?content.trim():Array.isArray(content)?content.filter(x=>x.type==="text").map(x=>x.text||"").join("\n").trim():"";
-  return answer?{reply:answer,provider:"OpenRouter",model:payload.model||"openrouter/free"}:{error:"OpenRouter did not return text. Try a shorter message.",code:"OPENROUTER_EMPTY"};
+  return answer?{reply:answer,provider:"OpenRouter",model:payload.model||"qwen/qwen3.8-27b:free"}:{error:"OpenRouter did not return text. Try a shorter message.",code:"OPENROUTER_EMPTY"};
  }catch{return {error:"OpenRouter connection could not be completed.",code:"OPENROUTER_NETWORK"}}
 }
 export default {async fetch(request,env){
