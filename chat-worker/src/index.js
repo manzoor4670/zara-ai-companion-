@@ -46,6 +46,7 @@ export default {async fetch(request,env){
   const code=response.status;
   let detail="";try{const err=await response.json();detail=String(err?.error?.message||"").slice(0,220)}catch{}
   failures.push({model,status:code,details:detail});
+  if(/user location is not supported/i.test(detail))return reply({error:"Google Gemini ne API request ki location reject ki hai. Pakistan supported hai, lekin Cloudflare se nikalne wali request par restriction ho sakti hai. Abid AI Agent ko isi waqt check karein. Gemini API location issue Google support ko report karein.",code:"GEMINI_LOCATION_UNSUPPORTED"},502);
   if([401,403,429].includes(code))break;
  }
  if(!response?.ok){
