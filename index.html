@@ -24,6 +24,7 @@ async function send(retry=false){
   let reply="";
   if(!cfg.endpoint){reply=demo(s);el("status").textContent="Demo mode: this is a sample reply, not AI.";retryPayload=null;}
   else{
+   if(typeof navigator.onLine==="boolean"&&!navigator.onLine)throw Error("Phone is offline. Reconnect to the internet");
    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);
    let response;
    try{response=await fetch(cfg.endpoint,{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({message:s,mode:el("mode").value,language:cfg.language,instructions:cfg.instructions,examples:cfg.examples,history:history.slice(0,-1).slice(-12),image:attachment})});}finally{clearTimeout(timer);}
