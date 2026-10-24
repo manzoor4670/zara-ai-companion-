@@ -9,6 +9,8 @@ const clarityGuide="IMPORTANT: The reader has difficulty understanding mixed Hin
 const conversationGuide="Read the full user's message and acknowledge all its important parts before replying. Understand common Pakistani Roman Urdu spelling errors and slang. Do not translate literally when meaning is clear. Distinguish ghari (watch), ghar (house), and ghariyan (watches or moments depending on context). If a word is genuinely ambiguous, ask one natural clarification. Respond kindly to compliments without claiming physical eyes, looks or meetings. Never write nonsensical metaphors like 'aankhon mein khushboo', 'dil mein tasveer ki awaaz', or call the user Zara (Zara is the assistant). A request 'Mujh se Roman Urdu mein pyari si baat karo' requires a simple friendly reply, for example: 'Acha ji, tum se baat karke acha lagta hai. Batao, aaj tumhara din kaisa guzra? ❤️' Another example: User: 'Mujhe bhi coffee pasand hai, tumhari ghariyan bohat khubsurat hain aur tum bhi.' Zara: 'Acha ji, tumhein bhi coffee pasand hai! Meri ghariyon aur tareef ka shukriya. Tumhein kis tarah ki coffee achi lagti hai?' Keep continuity, do not invent shared memories or repetitive romantic lines. Clarity is always more important than sounding romantic.";
 // Same primary/fallback models as the user's working Abid AI Agent.
 const MODELS=["gemini-3.5-flash-lite","gemini-3.8-flash"];
+// Keep fallback inference free; do not follow provider suggestions to switch to a paid model.
+const OPENROUTER_MODEL="openrouter/free";
 async function openRouterReply(env,system,prior,message,image){
  if(!env.OPENROUTER_API_KEY)return null;
  const messages=[{role:"system",content:system}];
@@ -18,17 +20,17 @@ async function openRouterReply(env,system,prior,message,image){
  try{
   const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
    method:"POST",headers:{"Authorization":"Bearer "+env.OPENROUTER_API_KEY,"Content-Type":"application/json","HTTP-Referer":"https://manzoor4670.github.io/zara-ai-companion-","X-Title":"Zara AI Companion"},
-   body:JSON.stringify({model:"qwen/qwen3.8-27b:free",messages,max_tokens:350,temperature:0.45}),
+   body:JSON.stringify({model:OPENROUTER_MODEL,messages,max_tokens:350,temperature:0.45}),
    signal:AbortSignal.timeout(40000)
   });
   if(!response.ok){
    let detail="";try{const obj=await response.json();detail=String(obj.error?.message||"").slice(0,160)}catch{}
-   return {error:response.status===429?"OpenRouter free daily limit reached. Try again later.": "OpenRouter error (HTTP "+response.status+"): "+detail,code:"OPENROUTER_ERROR"};
+   return {error:response.status===429?"OpenRouter free rate/quota limit reached. Kuch der baad dobara koshish karein.": "OpenRouter error (HTTP "+response.status+"): "+detail,code:"OPENROUTER_ERROR"};
   }
   const payload=await response.json();
   const content=payload.choices?.[0]?.message?.content;
   const answer=typeof content==="string"?content.trim():Array.isArray(content)?content.filter(x=>x.type==="text").map(x=>x.text||"").join("\n").trim():"";
-  return answer?{reply:answer,provider:"OpenRouter",model:payload.model||"qwen/qwen3.8-27b:free"}:{error:"OpenRouter did not return text. Try a shorter message.",code:"OPENROUTER_EMPTY"};
+  return answer?{reply:answer,provider:"OpenRouter",model:payload.model||OPENROUTER_MODEL}:{error:"OpenRouter did not return text. Try a shorter message.",code:"OPENROUTER_EMPTY"};
  }catch{return {error:"OpenRouter connection could not be completed.",code:"OPENROUTER_NETWORK"}}
 }
 export default {async fetch(request,env){
