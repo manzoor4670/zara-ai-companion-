@@ -1,0 +1,19 @@
+{
+  "name": "Zara AI Companion",
+  "short_name": "Zara AI",
+  "description": "Your Urdu and English AI companion",
+  "id": "/zara-ai-companion-/",
+  "start_url": "/zara-ai-companion-/",
+  "scope": "/zara-ai-companion-/",
+  "display": "standalone",
+  "background_color": "#10121d",
+  "theme_color": "#9c426f",
+  "icons": [
+    {
+      "src": "./zara-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
