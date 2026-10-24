@@ -17,7 +17,7 @@ document.getElementById("importSettings").onchange=async event=>{
   updateModeNotice();status.textContent="Settings restored on this browser. Reopen Zara Chat to apply.";
  }catch(err){status.textContent="Import failed: "+err.message;}
 };
-document.getElementById("reset").onclick=()=>{if(!confirm("Reset all Zara training settings on this browser? This cannot be undone. Export JSON first if you need a backup."))return;localStorage.removeItem("zara_settings");location.reload();};
+document.getElementById("reset").onclick=()=>{if(!confirm("Reset all Zara training settings on this browser? This cannot be undone. Export JSON first if you need a backup."))return;try{localStorage.removeItem("zara_settings");location.reload();}catch(error){document.getElementById("status").textContent="Reset failed: browser storage is unavailable. Check browser site storage permissions.";}};
 
 function updateModeNotice(){const value=document.getElementById("endpoint").value.trim();const notice=document.getElementById("modeNotice");notice.textContent=value?"Configured endpoint: real AI replies require a working backend and a successful chat test.":"Demo Mode: no AI endpoint configured. Chat gives sample replies only.";}
 document.getElementById("endpoint").addEventListener("input",updateModeNotice);updateModeNotice();
