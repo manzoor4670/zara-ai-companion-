@@ -46,7 +46,9 @@ export default {async fetch(request,env){
  if(size>2_500_000)return reply({error:"Request too large"},413);
  let data;try{const raw=await request.text();if(raw.length>2_500_000)return reply({error:"Request too large"},413);data=JSON.parse(raw);if(!data||typeof data!=="object"||Array.isArray(data))return reply({error:"Invalid request data"},400);}catch{return reply({error:"Invalid JSON"},400)}
  const message=typeof data.message==="string"?data.message.trim().slice(0,2000):"";
- const mode=["normal","romantic","adult"].includes(data.mode)?data.mode:"normal";
+ // The chat UI sends "flirty"; keep "adult" compatible with older clients.
+ const requestedMode=data.mode==="flirty"?"adult":data.mode;
+ const mode=["normal","romantic","adult"].includes(requestedMode)?requestedMode:"normal";
  const lang=["Roman Urdu","Urdu","English"].includes(data.language)?data.language:"Roman Urdu";
  if(!message&&!data.image)return reply({error:"Message required"},400);
  const instructions=typeof data.instructions==="string"?data.instructions.slice(0,2500):"";
