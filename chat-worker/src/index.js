@@ -21,7 +21,7 @@ async function openRouterReply(env,system,prior,message,image){
  try{
   const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
    method:"POST",headers:{"Authorization":"Bearer "+env.OPENROUTER_API_KEY,"Content-Type":"application/json","HTTP-Referer":"https://manzoor4670.github.io/zara-ai-companion-","X-Title":"Zara AI Companion"},
-   body:JSON.stringify({model:OPENROUTER_MODEL,messages,max_tokens:350,temperature:0.45}),
+   body:JSON.stringify({model:OPENROUTER_MODEL,messages,max_tokens:1000,temperature:0.45}),
    signal:AbortSignal.timeout(40000)
   });
   if(!response.ok){
@@ -29,9 +29,16 @@ async function openRouterReply(env,system,prior,message,image){
    return {error:response.status===429?"OpenRouter free rate/quota limit reached. Kuch der baad dobara koshish karein.": "OpenRouter error (HTTP "+response.status+"): "+detail,code:"OPENROUTER_ERROR"};
   }
   const payload=await response.json();
-  const content=payload.choices?.[0]?.message?.content;
-  const answer=typeof content==="string"?content.trim():Array.isArray(content)?content.filter(x=>x.type==="text").map(x=>x.text||"").join("\n").trim():"";
-  return answer?{reply:answer,provider:"OpenRouter",model:payload.model||OPENROUTER_MODEL}:{error:"OpenRouter did not return text. Try a shorter message.",code:"OPENROUTER_EMPTY"};
+  if(payload?.error)return {error:"AI service se jawab nahi mila. Kuch der baad dobara koshish karein.",code:"OPENROUTER_PROVIDER"};
+  const choice=payload?.choices?.[0],msg=choice?.message;
+  const content=msg?.content;
+  const answer=typeof content==="string"?content.trim():Array.isArray(content)?content.filter(x=>x&&x.type==="text"&&typeof x.text==="string").map(x=>x.text).join("\n").trim():"";
+  const refusal=typeof msg?.refusal==="string"?msg.refusal.trim():"";
+  // A refusal is visible model output, not a network failure. Never expose reasoning.
+  if(answer||refusal)return {reply:answer||refusal,provider:"OpenRouter",model:payload.model||OPENROUTER_MODEL,...(refusal||choice?.finish_reason==="content_filter"?{refused:true}:{})};
+  if(choice?.finish_reason==="content_filter")return {error:"AI model ne is paigham ka jawab rok diya. Sawal ko wazeh aur munasib alfaaz mein likhein.",code:"OPENROUTER_FILTERED"};
+  if(choice?.finish_reason==="length")return {error:"AI model jawab likhne se pehle output limit tak pahunch gaya. Kuch der baad dobara koshish karein.",code:"OPENROUTER_OUTPUT_LIMIT"};
+  return {error:"AI service se khaali jawab mila. Kuch der baad Retry dabayein.",code:"OPENROUTER_EMPTY"};
  }catch{return {error:"OpenRouter connection could not be completed.",code:"OPENROUTER_NETWORK"}}
 }
 export default {async fetch(request,env){
@@ -86,7 +93,7 @@ export default {async fetch(request,env){
  }
  if(!response?.ok){
   const alternate=await openRouterReply(env,system,prior,message,data.image);
-  if(alternate?.reply)return reply(alternate);
+  if(alternate)return reply(alternate,alternate.reply?200:502);
   const last=failures[failures.length-1]||{};
   const details=last.details||("HTTP "+(last.status||"unknown"));
   if(last.status===429)return reply({error:"Gemini quota/rate limit reached. Please try later.",code:"GEMINI_RATE_LIMIT"},429);
