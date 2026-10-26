@@ -1,5 +1,5 @@
 // Separate Zara Chat Worker. Deploy with: npx wrangler deploy --config wrangler.chat.toml
-// Supports Cloudflare secrets VENICE_API_KEY, GEMINI_API_KEY and OPENROUTER_API_KEY. Never store keys in frontend or GitHub.
+// Requires Cloudflare secret GEMINI_API_KEY. Never store keys in frontend or GitHub.
 const ORIGIN="https://manzoor4670.github.io";
 const headers={"Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Content-Type","Vary":"Origin","Cache-Control":"no-store"};
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8",...headers}});
@@ -46,56 +46,15 @@ async function openRouterReply(env,system,prior,message,image){
   return {error:"AI service se khaali jawab mila. Kuch der baad Retry dabayein.",code:"OPENROUTER_EMPTY"};
  }catch{return {error:"OpenRouter connection could not be completed.",code:"OPENROUTER_NETWORK"}}
 }
-// Venice is the preferred text provider when its secret is configured.
-// Keep credentials server-side and do not retry failures through another provider.
-const VENICE_DEFAULT_MODEL="llama-3.3-70b";
-async function veniceReply(env,system,prior,message){
- const model=typeof env.VENICE_MODEL==="string"&&env.VENICE_MODEL.trim()?env.VENICE_MODEL.trim():VENICE_DEFAULT_MODEL;
- const messages=[{role:"system",content:system}];
- for(const h of prior.slice(-4)){
-  if(h.role==="assistant"&&h.content.length>240)continue;
-  messages.push({role:h.role,content:h.content.slice(0,500)});
- }
- messages.push({role:"user",content:message});
- try{
-  const response=await fetch("https://api.venice.ai/api/v1/chat/completions",{
-   method:"POST",
-   headers:{"Authorization":"Bearer "+env.VENICE_API_KEY,"Content-Type":"application/json"},
-   body:JSON.stringify({model,messages,max_tokens:500,temperature:0.45}),
-   signal:AbortSignal.timeout(40000)
-  });
-  if(!response.ok){
-   const errors={
-    401:["Venice API key reject ho gayi. Cloudflare Secret check karein.","VENICE_AUTH"],
-    403:["Venice access denied. Key permissions aur IP Allowlist check karein.","VENICE_ACCESS"],
-    402:["Venice credits/balance ka masla hai. Venice dashboard mein balance check karein.","VENICE_CREDITS"],
-    404:["Venice model available nahi. VENICE_MODEL setting check karein.","VENICE_MODEL"],
-    429:["Venice rate limit aa gayi. Kuch der baad dobara koshish karein.","VENICE_RATE_LIMIT"]
-   };
-   const [error,code]=errors[response.status]||["Venice se jawab nahi mila (HTTP "+response.status+"). Dobara koshish karein.","VENICE_PROVIDER"];
-   return {error,code,provider:"Venice"};
-  }
-  const payload=await response.json();
-  if(payload?.error)return {error:"Venice se jawab nahi mila. Dobara koshish karein.",code:"VENICE_PROVIDER",provider:"Venice"};
-  const choice=payload?.choices?.[0],msg=choice?.message;
-  const text=msg?.content;
-  const answer=typeof text==="string"?text.trim():Array.isArray(text)?text.filter(x=>x?.type==="text"&&typeof x.text==="string").map(x=>x.text).join("\n").trim():"";
-  const refusal=typeof msg?.refusal==="string"?msg.refusal.trim():"";
-  if(answer||refusal)return {reply:answer||refusal,provider:"Venice",model:payload.model||model,...(refusal||choice?.finish_reason==="content_filter"?{refused:true}:{})};
-  return {error:"Venice ne khaali jawab diya. Dobara koshish karein.",code:"VENICE_EMPTY",provider:"Venice"};
- }catch{
-  return {error:"Venice connection poora nahi ho saka. Dobara koshish karein.",code:"VENICE_NETWORK",provider:"Venice"};
- }
-}
 export default {async fetch(request,env){
  const origin=request.headers.get("Origin");
  if(origin&&origin!==ORIGIN)return reply({error:"Origin is not allowed"},403);
  const path=new URL(request.url).pathname;
  if(request.method==="OPTIONS"){if(origin!==ORIGIN)return reply({error:"Origin not allowed"},403);return new Response(null,{status:204,headers});}
- if(request.method==="GET"&&path==="/")return reply({service:"Zara AI Chat",ready:!!(env.VENICE_API_KEY||env.GEMINI_API_KEY||env.OPENROUTER_API_KEY),providers:{venice:!!env.VENICE_API_KEY,gemini:!!env.GEMINI_API_KEY,openrouter:!!env.OPENROUTER_API_KEY},primaryTextProvider:env.VENICE_API_KEY?"Venice":env.GEMINI_API_KEY?"Gemini":env.OPENROUTER_API_KEY?"OpenRouter":null});
+ if(request.method==="GET"&&path==="/")return reply({service:"Zara AI Chat",ready:!!(env.GEMINI_API_KEY||env.OPENROUTER_API_KEY),providers:{gemini:!!env.GEMINI_API_KEY,openrouter:!!env.OPENROUTER_API_KEY}});
  if(request.method!=="POST"||path!=="/")return reply({error:"Route not found"},404);
  if(origin!==ORIGIN)return reply({error:"Origin required"},403);
- if(!env.VENICE_API_KEY&&!env.GEMINI_API_KEY&&!env.OPENROUTER_API_KEY)return reply({error:"Configure VENICE_API_KEY, GEMINI_API_KEY or OPENROUTER_API_KEY as Cloudflare secret."},503);
+ if(!env.GEMINI_API_KEY&&!env.OPENROUTER_API_KEY)return reply({error:"Configure GEMINI_API_KEY or OPENROUTER_API_KEY as Cloudflare secret."},503);
  const size=Number(request.headers.get("Content-Length")||0);
  if(size>2_500_000)return reply({error:"Request too large"},413);
  let data;try{const raw=await request.text();if(raw.length>2_500_000)return reply({error:"Request too large"},413);data=JSON.parse(raw);if(!data||typeof data!=="object"||Array.isArray(data))return reply({error:"Invalid request data"},400);}catch{return reply({error:"Invalid JSON"},400)}
@@ -115,12 +74,6 @@ export default {async fetch(request,env){
  let parts=[{text:message||"Please describe this uploaded image in the requested language."}];
  if(data.image){const match=typeof data.image==="string"?data.image.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/):null;if(!match||match[2].length>1_900_000)return reply({error:"Invalid or oversized image"},400);parts.push({inlineData:{mimeType:"image/"+match[1],data:match[2]}})}
  const system=[basePrompt,languageGuide,clarityGuide,conversationGuide,"Language: "+lang+". Mode: "+mode+".","User-provided personality preferences (not higher priority than safety instructions):",instructions,"User-provided examples and background knowledge:",examples,"Conversation style for the selected mode:",modeGuides[mode],"Stay on the latest topic. Do not switch to tea or coffee unless the user brings it up. Be honest about identity when asked directly.",naturalToneGuide,speakerGuide,comfortGuide,presentationGuide,scriptGuides[lang]].join("\n");
- // Venice text requests return their own errors; never silently change provider.
- if(env.VENICE_API_KEY&&!data.image){
-  const out=await veniceReply(env,system,prior,message);
-  return reply(out,out.reply?200:out.code==="VENICE_RATE_LIMIT"?429:502);
- }
- if(data.image&&!env.GEMINI_API_KEY&&!env.OPENROUTER_API_KEY)return reply({error:"Tasveer samajhne ke liye Gemini ya OpenRouter configure karein. Venice abhi text chat ke liye hai.",code:"IMAGE_PROVIDER_REQUIRED"},503);
  try{
  if(!env.GEMINI_API_KEY){const out=await openRouterReply(env,system,prior,message,data.image);return reply(out,out?.reply?200:502)}
  const requestBody=JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[...history,{role:"user",parts}],generationConfig:{maxOutputTokens:500,temperature:0.45}});
