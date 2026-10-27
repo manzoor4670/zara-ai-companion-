@@ -1,0 +1,53 @@
+name: Build Zara Android
+on:
+  push:
+    branches: ["main", "feat/zara-online-android-apk-20261027"]
+    paths: ["android/**", ".github/workflows/build-android.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zara-android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+        with:
+          log-accepted-android-sdk-licenses: false
+          packages: platform-tools
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Check native bridge
+        run: node android/tests/native-bridge.test.mjs
+      - name: Build and check Android app
+        run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease --no-daemon
+      - name: Prepare unsigned package and signing verifier
+        run: |
+          mkdir -p android-artifact
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk android-artifact/Zara-online-unsigned.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" android-artifact/apksigner.jar
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-artifact/Zara-online-unsigned.apk > android-artifact/apk-metadata.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zara-online-android-unsigned
+          path: android-artifact/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zara-android-checks
+          path: |
+            android/app/build/reports/
+            android/app/build/test-results/
+          if-no-files-found: ignore
