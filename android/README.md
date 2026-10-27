@@ -1,4 +1,4 @@
-# Zara Android 0.2.0
+# Zara Android 0.2.1
 
 ## Offline text chat
 
@@ -12,9 +12,11 @@ the import in addition to the downloaded file. Uninstalling the app removes
 its private model copy. No chat is sent to a server by this offline screen.
 
 Offline inference uses the CPU through llama.cpp v0.7.0, pinned to commit
-620d2225cc436ab0b001e3200e590e3b286ef9ab. It requires a 64-bit Android process
-on Android 9+. The APK also retains a 32-bit online fallback; the offline button
-explains the requirement on unsupported phones. RAM and speed still require
+620d2225cc436ab0b001e3200e590e3b286ef9ab. It requires Android 9+. Version 0.2.1 also compiles the real engine for 32-bit
+ARM instead of the previous online-only stub. CI checks real ARM32 CPU inference
+under QEMU as well as the 64-bit host core. The screen shows Android version,
+process bitness, ABI and native-library load status above the model picker.
+RAM and speed still require
 handset validation. For a 4 GB device the context is limited to 1024 tokens,
 two short previous exchanges, 128 output tokens, two CPU threads and a
 90-second inference deadline. A small model may struggle with Urdu/Roman Urdu

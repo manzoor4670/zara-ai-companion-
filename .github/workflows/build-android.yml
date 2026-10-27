@@ -1,7 +1,7 @@
 name: Build Zara Android
 on:
   push:
-    branches: ["main", "feat/zara-online-android-apk-20261027", "feat/zara-offline-text"]
+    branches: ["main", "feat/zara-online-android-apk-20261027", "feat/zara-offline-text", "fix/zara-offline-compatibility"]
     paths: ["android/**", ".github/workflows/build-android.yml"]
   workflow_dispatch:
 permissions:
@@ -46,6 +46,14 @@ jobs:
           /tmp/zara-smoke/zara_offline_smoke /tmp/zara-qwen.gguf
       - name: Build and check Android app
         run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease --no-daemon
+      - name: Build and test real 32-bit ARM inference
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends g++-arm-linux-gnueabihf qemu-user
+          cmake -S android/app/src/main/cpp -B /tmp/zara-smoke-arm32 -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=armv7l -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ -DCMAKE_C_FLAGS="-mfpu=neon-vfpv4" -DCMAKE_CXX_FLAGS="-mfpu=neon-vfpv4"
+          cmake --build /tmp/zara-smoke-arm32 --target zara_offline_smoke -j2
+          readelf -h /tmp/zara-smoke-arm32/zara_offline_smoke | grep ELF32
+          qemu-arm -cpu cortex-a15 -L /usr/arm-linux-gnueabihf /tmp/zara-smoke-arm32/zara_offline_smoke /tmp/zara-qwen.gguf
       - name: Prepare unsigned package and signing verifier
         run: |
           mkdir -p android-artifact
