@@ -1,0 +1,17 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const root=new URL('../',import.meta.url);
+const index=readFileSync(new URL('index.html',root),'utf8');
+const canonical=readFileSync(new URL('avatar.html',root),'utf8');
+const pages=JSON.parse(index.match(/const embeddedPages=(\{[^\n]+\});/)[1]);
+const embedded=Buffer.from(pages.avatar,'base64').toString('utf8');
+assert.equal(embedded.match(/<script>([\s\S]*?)<\/script>/)[1],canonical.match(/<script>([\s\S]*?)<\/script>/)[1]);
+console.log('PASS main and standalone dress logic match');
+const clean=s=>s.replace(/<style>[\s\S]*?<\/style>/g,'').replace(/<script>[\s\S]*?<\/script>/g,'').trim();
+assert.equal(clean(embedded),clean(canonical));
+console.log('PASS main and standalone dress controls and instructions match');
+assert.ok(embedded.includes('parent.switchZaraTab(pages[file])'));
+assert.ok(embedded.includes('id="applyImported"'));
+assert.ok(embedded.includes('id="restoreOriginal"'));
+assert.ok(embedded.includes('dress ki akeli photo nahi'));
+console.log('PASS apply, restore, upload guidance and parent navigation present');
