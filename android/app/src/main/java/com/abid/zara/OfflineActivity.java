@@ -12,6 +12,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -27,6 +29,7 @@ public final class OfflineActivity extends Activity {
     private EditText input;
     private Button send,choose,download,clear,stop;
     private ScrollView scroll;
+    private Spinner language;
     private boolean supported,busy,destroyed;
     private int operation;
     private String transcript="";
@@ -38,6 +41,9 @@ public final class OfflineActivity extends Activity {
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(14),dp(8),dp(14),dp(12));root.setFitsSystemWindows(true);root.setBackgroundColor(Color.rgb(23,19,30));
         TextView title=label("Zara · Offline text chat",21);root.addView(title);
         TextView note=label("Model import hone ke baad internet band karke baat karein. Yeh chhota text model hai; photo aur dress generation online hain. Offline chat is session tak rehti hai.",13);root.addView(note);
+        root.addView(label("Salam, naam aur haal-chaal ke sawal seedhay samjhe jate hain. Baqi jawab chhota model banata hai.",12));
+        root.addView(label("Zuban / Language",13));language=new Spinner(this);String[] languages={"Roman Urdu","Urdu","English"};language.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,languages));
+        String savedLanguage=getPreferences(MODE_PRIVATE).getString("language","Roman Urdu");for(int i=0;i<languages.length;i++)if(languages[i].equals(savedLanguage))language.setSelection(i);root.addView(language);
         LinearLayout tools=new LinearLayout(this);
         Button online=button("Online");online.setOnClickListener(v->finish());tools.addView(online);
         download=button("Model download");download.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(OfflineModel.DOWNLOAD_URL)));}catch(Exception error){status.setText("Browser available nahi.");}});tools.addView(download);
@@ -55,7 +61,7 @@ public final class OfflineActivity extends Activity {
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private TextView label(String text,int size){TextView v=new TextView(this);v.setText(text);v.setTextSize(size);v.setTextColor(Color.rgb(239,215,231));v.setPadding(0,dp(5),0,dp(5));return v;}
     private Button button(String text){Button b=new Button(this);b.setText(text);b.setAllCaps(false);b.setTextSize(12);return b;}
-    private void setBusy(boolean value){busy=value;choose.setEnabled(!value);download.setEnabled(!value);send.setEnabled(supported&&!value&&modelFile().isFile());clear.setEnabled(!value);input.setEnabled(!value);stop.setEnabled(value&&supported);}
+    private void setBusy(boolean value){busy=value;choose.setEnabled(!value);download.setEnabled(!value);language.setEnabled(!value);send.setEnabled(supported&&!value&&modelFile().isFile());clear.setEnabled(!value);input.setEnabled(!value);stop.setEnabled(value&&supported);}
     private void preview(String text){chat.setText(text);scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));}
     @Override protected void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==PICK_MODEL&&result==RESULT_OK&&data!=null&&data.getData()!=null&&!busy&&supported)importModel(data.getData());}
     private void importModel(Uri uri){
@@ -78,19 +84,21 @@ public final class OfflineActivity extends Activity {
     private void send(){
         if(busy||!supported||!modelFile().isFile())return;
         final String user=input.getText().toString().trim();if(user.isEmpty())return;
-        final String prompt=OfflinePrompt.build(user,history);final int id=++operation;final long epoch=OfflineNative.epoch();
+        final String selectedLanguage=language.getSelectedItem().toString();getPreferences(MODE_PRIVATE).edit().putString("language",selectedLanguage).apply();
+        final String quick=OfflineReplies.reply(user,selectedLanguage,history);
+        if(quick!=null){input.setText("");finishReply(user,quick);status.setText("✓ Chhote sawal ka local offline jawab tayyar.");return;}
+        final String prompt=OfflinePrompt.build(user,history,selectedLanguage);final int id=++operation;final long epoch=OfflineNative.epoch();
         final String before=transcript;input.setText("");setBusy(true);status.setText("Offline Zara model load karke soch rahi hai... Stop se rok sakte hain.");preview(before+"Tum: "+user+"\n\nZara: …");
         WORK.execute(()->{String answer=null,error=null;
             try{answer=new String(OfflineNative.generate(modelFile().getAbsolutePath(),prompt.getBytes(StandardCharsets.UTF_8),epoch,bytes->{final String partial=new String(bytes,StandardCharsets.UTF_8);runOnUiThread(()->{if(!destroyed&&busy&&operation==id&&OfflineNative.epoch()==epoch)preview(before+"Tum: "+user+"\n\nZara: "+partial);});}),StandardCharsets.UTF_8).trim();}
             catch(Exception e){error=e.getMessage();}catch(OutOfMemoryError e){error="out-of-memory";}
             final String reply=answer,failure=error;runOnUiThread(()->{if(destroyed||operation!=id)return;setBusy(false);
                 if(failure!=null||reply==null||reply.isEmpty()){input.setText(user);preview(before);status.setText("Jawab mukammal nahi hua: "+friendly(failure));return;}
-                history.add(new OfflinePrompt.Turn(user,reply));while(history.size()>2)history.remove(0);
-                transcript=before+"Tum: "+user+"\n\nZara: "+reply+"\n\n";if(transcript.length()>16000)transcript=transcript.substring(transcript.length()-12000);
-                preview(transcript);status.setText("✓ Offline jawab tayyar. Koi chat server ko nahi bheji gayi.");
+                finishReply(user,reply);status.setText("✓ Model ka offline jawab tayyar. Koi chat server ko nahi bheji gayi.");
             });
         });
     }
+    private void finishReply(String user,String reply){history.add(new OfflinePrompt.Turn(user,reply));while(history.size()>2)history.remove(0);transcript+="Tum: "+user+"\n\nZara: "+reply+"\n\n";if(transcript.length()>16000)transcript=transcript.substring(transcript.length()-12000);preview(transcript);}
     private static String friendly(String error){
         if("cancelled".equals(error))return "Rok diya gaya ya waqt khatam hua. Dobara Send karein.";
         if("wrong-model".equals(error))return "Yeh supported Qwen file nahi, ya download adhoora hai. Model download button wali file chunein.";
