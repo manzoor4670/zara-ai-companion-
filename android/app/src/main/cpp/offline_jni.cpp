@@ -2,6 +2,7 @@
 #include "inference.h"
 #include <exception>
 #include <stdexcept>
+extern "C" JNIEXPORT jint JNICALL Java_com_abid_zara_OfflineNative_runtimeBits(JNIEnv *,jclass){return sizeof(void*)*8;}
 extern "C" JNIEXPORT jlong JNICALL Java_com_abid_zara_OfflineNative_epoch(JNIEnv *,jclass){return static_cast<jlong>(zara_epoch());}
 extern "C" JNIEXPORT void JNICALL Java_com_abid_zara_OfflineNative_cancel(JNIEnv *,jclass){zara_cancel();}
 extern "C" JNIEXPORT jbyteArray JNICALL Java_com_abid_zara_OfflineNative_generate(JNIEnv *env,jclass,jstring path,jbyteArray prompt,jlong epoch,jobject listener){

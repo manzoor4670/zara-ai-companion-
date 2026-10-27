@@ -34,6 +34,7 @@ public final class OfflineActivity extends Activity {
 
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
+        supported=OfflineNative.available();
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(14),dp(8),dp(14),dp(12));root.setFitsSystemWindows(true);root.setBackgroundColor(Color.rgb(23,19,30));
         TextView title=label("Zara · Offline text chat",21);root.addView(title);
         TextView note=label("Model import hone ke baad internet band karke baat karein. Yeh chhota text model hai; photo aur dress generation online hain. Offline chat is session tak rehti hai.",13);root.addView(note);
@@ -41,19 +42,20 @@ public final class OfflineActivity extends Activity {
         Button online=button("Online");online.setOnClickListener(v->finish());tools.addView(online);
         download=button("Model download");download.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(OfflineModel.DOWNLOAD_URL)));}catch(Exception error){status.setText("Browser available nahi.");}});tools.addView(download);
         root.addView(tools);
-        choose=button("GGUF model chunein (491 MB)");choose.setOnClickListener(v->{Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("*/*");try{startActivityForResult(intent,PICK_MODEL);}catch(Exception error){status.setText("Files app available nahi.");}});root.addView(choose);
+        root.addView(label(OfflineNative.diagnostic(),13));
+        choose=button("GGUF model chunein (491 MB)");choose.setOnClickListener(v->{if(!supported){status.setText(OfflineNative.diagnostic());return;}Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("*/*");try{startActivityForResult(intent,PICK_MODEL);}catch(Exception error){status.setText("Files app available nahi.");}});root.addView(choose);
         status=label("",14);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);root.addView(status);
         scroll=new ScrollView(this);chat=label("",16);chat.setTextIsSelectable(true);scroll.addView(chat);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         input=new EditText(this);input.setTextColor(Color.WHITE);input.setHintTextColor(Color.LTGRAY);input.setHint("Yahan likhein · max 500 letters");input.setMaxLines(3);input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(500)});root.addView(input,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout controls=new LinearLayout(this);send=button("Send");send.setOnClickListener(v->send());controls.addView(send);stop=button("Stop");stop.setOnClickListener(v->{OfflineNative.cancel();status.setText("Rok rahi hoon...");});controls.addView(stop);clear=button("Nayi chat");clear.setOnClickListener(v->{history.clear();transcript="";chat.setText("");status.setText("Nayi offline chat tayyar hai.");});controls.addView(clear);root.addView(controls);
-        setContentView(root);supported=OfflineNative.available();setBusy(false);
-        status.setText(!supported?"Offline model ke liye 64-bit Android 9 ya naya chahiye. Online Zara istemal kar sakte hain.":modelFile().isFile()?"Model tayyar hai. Internet band karke test kar sakte hain.":"Pehle Model download dabayein (491 MB), phir GGUF model chunein. Agar yeh file pehle se phone mein hai to seedha chunein. Kam az kam 600 MB khali storage chahiye.");
+        setContentView(root);setBusy(false);
+        status.setText(!supported?OfflineNative.diagnostic():modelFile().isFile()?"Model tayyar hai. Internet band karke test kar sakte hain.":"Pehle Model download dabayein (491 MB), phir GGUF model chunein. Agar yeh file pehle se phone mein hai to seedha chunein. Kam az kam 600 MB khali storage chahiye.");
     }
     private File modelFile(){return new File(getFilesDir(),OfflineModel.FILE_NAME);}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private TextView label(String text,int size){TextView v=new TextView(this);v.setText(text);v.setTextSize(size);v.setTextColor(Color.rgb(239,215,231));v.setPadding(0,dp(5),0,dp(5));return v;}
     private Button button(String text){Button b=new Button(this);b.setText(text);b.setAllCaps(false);b.setTextSize(12);return b;}
-    private void setBusy(boolean value){busy=value;choose.setEnabled(supported&&!value);download.setEnabled(!value);send.setEnabled(supported&&!value&&modelFile().isFile());clear.setEnabled(!value);input.setEnabled(!value);stop.setEnabled(value&&supported);}
+    private void setBusy(boolean value){busy=value;choose.setEnabled(!value);download.setEnabled(!value);send.setEnabled(supported&&!value&&modelFile().isFile());clear.setEnabled(!value);input.setEnabled(!value);stop.setEnabled(value&&supported);}
     private void preview(String text){chat.setText(text);scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));}
     @Override protected void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(code==PICK_MODEL&&result==RESULT_OK&&data!=null&&data.getData()!=null&&!busy&&supported)importModel(data.getData());}
     private void importModel(Uri uri){
