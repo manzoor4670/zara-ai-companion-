@@ -1,7 +1,7 @@
 name: Build Zara Android
 on:
   push:
-    branches: ["main", "feat/zara-online-android-apk-20261027"]
+    branches: ["main", "feat/zara-online-android-apk-20261027", "feat/zara-offline-text"]
     paths: ["android/**", ".github/workflows/build-android.yml"]
   workflow_dispatch:
 permissions:
@@ -12,9 +12,14 @@ concurrency:
 jobs:
   android:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ggml-org/llama.cpp
+          ref: 620d2225cc436ab0b001e3200e590e3b286ef9ab
+          path: android/llama.cpp
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,20 +32,29 @@ jobs:
           log-accepted-android-sdk-licenses: false
           packages: platform-tools
       - name: Install Android platform
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
       - name: Check native bridge
         run: node android/tests/native-bridge.test.mjs
+      - name: Build local CPU inference smoke test
+        run: |
+          cmake -S android/app/src/main/cpp -B /tmp/zara-smoke -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/zara-smoke --target zara_offline_smoke -j2
+      - name: Verify model and test real local inference
+        run: |
+          curl --fail --location --retry 2 --max-time 300 "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true" -o /tmp/zara-qwen.gguf
+          echo "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db  /tmp/zara-qwen.gguf" | sha256sum --check
+          /tmp/zara-smoke/zara_offline_smoke /tmp/zara-qwen.gguf
       - name: Build and check Android app
         run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease --no-daemon
       - name: Prepare unsigned package and signing verifier
         run: |
           mkdir -p android-artifact
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk android-artifact/Zara-online-unsigned.apk
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk android-artifact/Zara-unsigned.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" android-artifact/apksigner.jar
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-artifact/Zara-online-unsigned.apk > android-artifact/apk-metadata.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-artifact/Zara-unsigned.apk > android-artifact/apk-metadata.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: zara-online-android-unsigned
+          name: zara-android-unsigned
           path: android-artifact/
           retention-days: 14
       - uses: actions/upload-artifact@v4

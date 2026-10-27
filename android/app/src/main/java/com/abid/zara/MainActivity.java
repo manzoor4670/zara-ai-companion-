@@ -49,6 +49,7 @@ public final class MainActivity extends Activity {
         LinearLayout toolbar = new LinearLayout(this); toolbar.setPadding(dp(8),dp(2),dp(8),dp(2));
         TextView title = new TextView(this); title.setText("Zara"); title.setTextSize(19); title.setTextColor(Color.rgb(239,178,203)); title.setGravity(android.view.Gravity.CENTER_VERTICAL);
         toolbar.addView(title,new LinearLayout.LayoutParams(0,dp(44),1));
+        Button local = button("Offline"); local.setOnClickListener(v -> startActivity(new Intent(this, OfflineActivity.class))); toolbar.addView(local);
         Button reload = button("Reload"); reload.setOnClickListener(v -> loadHome()); toolbar.addView(reload);
         Button chrome = button("Chrome"); chrome.setOnClickListener(v -> openExternal(OriginPolicy.START_URL)); toolbar.addView(chrome);
         root.addView(toolbar,new LinearLayout.LayoutParams(-1,-2));
