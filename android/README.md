@@ -1,4 +1,21 @@
-# Zara Android 0.2.1
+# Zara Android 0.2.2
+
+## Offline language handling
+
+The Offline screen defaults to Roman Urdu, with explicit Urdu and English
+selection saved locally after sending. Greetings, introductions, name,
+wellbeing, capabilities and the incomplete phrase `kia hai ap ka` use narrow
+local intent rules. Ambiguous fragments ask for clarification; genuine car,
+brand and geography questions remain model requests. Greetings rotate instead
+of repeating consecutively. The UI distinguishes a local short-answer route
+from a model-generated reply. These rules do not make the model generally
+fluent in Urdu or guarantee factual accuracy.
+
+Other requests use explicit language instructions plus two short examples in
+the model prompt, with bounded context and shorter previous-answer excerpts.
+CI generates probes from the actual production Java prompt helper and runs
+them through the checksum-verified real model on the host CPU. The model file
+and SHA-256 are unchanged; no new model download is needed for this APK update.
 
 ## Offline text chat
 
