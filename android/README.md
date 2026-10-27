@@ -32,7 +32,7 @@ on a host CPU, including cancellation and prompt-limit checks. Android builds
 and Java unit tests cover packaging/import/prompt helpers. These are not
 physical-device tests.
 
-An online Android app for the existing Zara website at
+An Android app with an online screen for the existing Zara website at
 `https://manzoor4670.github.io/zara-ai-companion-/`. The web app and Worker
 continue to own chat, modes, memory and image interpretation. No API key or
 offline language model is bundled.
@@ -51,8 +51,9 @@ Voice needs a system recognition service and a suitable installed TTS voice.
 Some voices/recognition services require internet. The app does not request
 microphone, camera, contacts or broad file-storage permission itself; selected
 file/document access and recognition are provided by Android system activities.
-This first version does not provide direct camera capture, a local AI model or
-offline inference. It does not automatically import Chrome's chat/settings;
+The online screen does not provide direct camera capture. The separate Offline
+screen uses the imported local text model described above. The online screen
+does not automatically import Chrome's chat/settings;
 use the existing JSON export/import controls when moving data.
 
 ## Build and validation
