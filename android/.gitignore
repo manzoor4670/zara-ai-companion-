@@ -4,3 +4,6 @@ local.properties
 *.jks
 *.keystore
 *.p12
+llama.cpp/
+*.gguf
+.cxx/

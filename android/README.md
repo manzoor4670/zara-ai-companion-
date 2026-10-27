@@ -1,4 +1,36 @@
-# Zara Android 0.1.0
+# Zara Android 0.2.0
+
+## Offline text chat
+
+Tap **Offline** in the native toolbar. Import the official Qwen2.5-0.5B-Instruct
+Q4_K_M GGUF using the system document picker. The download button opens the
+official model URL in a browser; reuse the same file if already downloaded.
+The file is about 491 MB and is not bundled in the APK. Import copies it to
+app-private storage, verifies its GGUF header and pinned SHA-256, and leaves an
+existing model untouched if the new import fails. Keep at least 600 MB free for
+the import in addition to the downloaded file. Uninstalling the app removes
+its private model copy. No chat is sent to a server by this offline screen.
+
+Offline inference uses the CPU through llama.cpp v0.7.0, pinned to commit
+620d2225cc436ab0b001e3200e590e3b286ef9ab. It requires a 64-bit Android process
+on Android 9+. The APK also retains a 32-bit online fallback; the offline button
+explains the requirement on unsupported phones. RAM and speed still require
+handset validation. For a 4 GB device the context is limited to 1024 tokens,
+two short previous exchanges, 128 output tokens, two CPU threads and a
+90-second inference deadline. A small model may struggle with Urdu/Roman Urdu
+and complex requests. Context overflow asks for a shorter message/new chat.
+
+This first offline screen supports text only. It has independent session-only
+chat history; online chats, saved facts, voice, image understanding and dress
+generation are not transferred to it. Stop/backgrounding cancels pending work.
+The pinned model and native license remain separate from provider settings.
+
+Builds check out the pinned llama.cpp source into `android/llama.cpp` and install
+NDK 27.2.12479018 plus CMake 3.22.1. The source/model are ignored in git.
+CI runs the shared C++ inference core against the checksum-verified real model
+on a host CPU, including cancellation and prompt-limit checks. Android builds
+and Java unit tests cover packaging/import/prompt helpers. These are not
+physical-device tests.
 
 An online Android app for the existing Zara website at
 `https://manzoor4670.github.io/zara-ai-companion-/`. The web app and Worker
