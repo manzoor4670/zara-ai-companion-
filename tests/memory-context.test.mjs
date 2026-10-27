@@ -25,6 +25,32 @@ check('opt-in includes bounded facts as a separate field',()=>{const body=fronte
 check('turning sharing off stops facts appearing in subsequent requests',()=>{assert.equal(frontendBody(true).memory,'SAVED_SENTINEL');assert.equal(Object.hasOwn(frontendBody(false),'memory'),false)});
 check('embedded Admin loads, saves and imports the opt-in safely',()=>{assert.ok(admin.includes('checked=rawSaved.memoryEnabled===true'));assert.ok(admin.includes('out.memoryEnabled=document.getElementById("memoryEnabled").checked===true'));assert.ok(admin.includes('restored.memoryEnabled=false;'));assert.ok(admin.includes('document.getElementById("memoryEnabled").checked=false;'));assert.ok(admin.includes('sent to your configured AI endpoint with each message'))});
 check('parent Admin synchronization preserves an explicit boolean',()=>{assert.ok(html.includes('memoryEnabled:s.memoryEnabled===true'));assert.ok(html.includes('memoryEnabled:a.memoryEnabled===true'));assert.ok(html.includes("next.memoryEnabled=$('memoryEnabled').checked===true"))});
+function adminHarness(){
+ const initial={botname:'Zara',persona:'Persona',language:'Roman Urdu',welcome:'Salam',examples:'',endpoint:'https://test.example/',memory:'Tea preference',memoryEnabled:false,mode:'romantic',voice:false};
+ const legacy={name:initial.botname,instructions:initial.persona,language:initial.language,welcome:initial.welcome,examples:initial.examples,endpoint:initial.endpoint,memory:initial.memory,memoryEnabled:false};
+ const values=new Map([['zara-settings',JSON.stringify(initial)],['zara_settings',JSON.stringify(legacy)]]);
+ const storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)};
+ const root={s:{...initial},messages:[{role:'user',content:'Keep chat'}],defaults:{persona:'Default'},localStorage:storage,loadSaved:(k,f)=>{try{return JSON.parse(storage.getItem(k)||'null')??f}catch{return f}},status:()=>{},render:()=>{}};
+ vm.createContext(root);vm.runInContext(html.split('\n').find(l=>l.startsWith('let pending=null,busy=false'))+'\n'+html.split('\n').find(l=>l.startsWith('function pullAdmin()'))+'\n'+html.split('\n').find(l=>l.startsWith('function seedAdmin()')),root);
+ function reopen(){
+  root.s=JSON.parse(values.get('zara-settings'));vm.runInContext('seedAdmin()',root);
+  const nodes=new Proxy({}, {get(o,k){return o[k]??={value:'',checked:false,textContent:''}}});
+  const parent={pullAdmin:()=>vm.runInContext('pullAdmin()',root)},window={parent};
+  const context={window,parent,localStorage:storage,safeStoredObject:(k,f)=>{try{return JSON.parse(storage.getItem(k)||'null')??f}catch{return f}},document:{getElementById:id=>nodes[id]},confirm:()=>true,updateModeNotice:()=>{}};
+  vm.createContext(context);
+  const lines=admin.split('\n');
+  for(const prefix of ['const defaults=','document.getElementById("memoryEnabled").checked=','function syncSavedAdmin()','document.getElementById("save").onclick=']){const line=lines.find(l=>l.startsWith(prefix));assert.ok(line);vm.runInContext(line,context)}
+  const importStart=admin.indexOf('document.getElementById("importSettings").onchange='),importEnd=admin.indexOf('document.getElementById("reset").onclick=',importStart);
+  vm.runInContext(admin.slice(importStart,importEnd),context);
+  return {nodes,save:()=>nodes.save.onclick(),import:async obj=>{const text=JSON.stringify(obj);await nodes.importSettings.onchange({target:{value:'backup.json',files:[{size:text.length,text:async()=>text}]}})}};
+ }
+ return {values,root,reopen,legacy};
+}
+check('real Admin Save keeps existing facts local while sharing is off',()=>{const h=adminHarness(),a=h.reopen();assert.equal(a.nodes.memoryEnabled.checked,false);a.save();const saved=JSON.parse(h.values.get('zara-settings'));assert.equal(saved.memoryEnabled,false);assert.equal(saved.memory,'Tea preference')});
+check('real Admin opt-in survives Save, parent sync and refresh',()=>{const h=adminHarness(),a=h.reopen();a.nodes.memoryEnabled.checked=true;a.nodes.memory.value='Preferred name: Test';a.save();const reopened=h.reopen();assert.equal(reopened.nodes.memoryEnabled.checked,true);assert.equal(reopened.nodes.memory.value,'Preferred name: Test');assert.equal(h.root.s.mode,'romantic');assert.equal(h.root.s.voice,false)});
+check('real Admin can disable sharing without deleting saved facts',()=>{const h=adminHarness(),a=h.reopen();a.nodes.memoryEnabled.checked=true;a.save();const reopened=h.reopen();reopened.nodes.memoryEnabled.checked=false;reopened.save();const saved=JSON.parse(h.values.get('zara-settings'));assert.equal(saved.memoryEnabled,false);assert.equal(saved.memory,'Tea preference');assert.equal(h.reopen().nodes.memoryEnabled.checked,false)});
+await checkAsync('real settings import keeps sharing off even when a backup requests opt-in',async()=>{const h=adminHarness(),a=h.reopen();await a.import({...h.legacy,memory:'Imported preference',memoryEnabled:true});const saved=JSON.parse(h.values.get('zara-settings'));assert.equal(saved.memory,'Imported preference');assert.equal(saved.memoryEnabled,false);assert.equal(a.nodes.memoryEnabled.checked,false);assert.match(a.nodes.status.textContent,/sharing is off/)});
+await checkAsync('invalid settings import leaves saved memory and opt-in unchanged',async()=>{const h=adminHarness(),a=h.reopen();a.nodes.memoryEnabled.checked=true;a.save();const before=h.values.get('zara-settings');await a.import({...h.legacy,language:'invalid',memory:'DO NOT SAVE'});assert.equal(h.values.get('zara-settings'),before);assert.match(a.nodes.status.textContent,/Import failed/)});
 const originalFetch=globalThis.fetch;
 async function request(provider,{flag,memory='SAVED_SENTINEL',history,language='Roman Urdu',mode='normal',image,quotaFallback=false}={}){
  const requests=[];let failure;
