@@ -1,0 +1,31 @@
+name: Zara CharacterAI Adapter Tests
+
+on:
+  push:
+    branches:
+      - experiment/characterai-compatibility
+    paths:
+      - 'experiments/characterai/**'
+      - '.github/workflows/zara-characterai-tests.yml'
+  pull_request:
+    paths:
+      - 'experiments/characterai/**'
+      - '.github/workflows/zara-characterai-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adapter-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate adapter (offline, no API secrets)
+        run: |
+          node experiments/characterai/provider-contract.test.mjs
+          node experiments/characterai/adapter.test.mjs
