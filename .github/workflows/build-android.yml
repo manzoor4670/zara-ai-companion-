@@ -3,6 +3,8 @@ on:
   push:
     branches: ["main", "feat/zara-online-android-apk-20261027"]
     paths: ["android/**", ".github/workflows/build-android.yml"]
+  pull_request:
+    paths: ["android/**", ".github/workflows/build-android.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,7 +24,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           log-accepted-android-sdk-licenses: false
           packages: |
