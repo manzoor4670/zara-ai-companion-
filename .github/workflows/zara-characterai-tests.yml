@@ -1,0 +1,39 @@
+name: Zara CharacterAI Adapter Tests
+
+on:
+  push:
+    branches:
+      - experiment/characterai-compatibility
+    paths:
+      - 'experiments/characterai/**'
+      - '.github/workflows/zara-characterai-tests.yml'
+  pull_request:
+    paths:
+      - 'experiments/characterai/**'
+      - '.github/workflows/zara-characterai-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adapter-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax
+        run: |
+          node --check experiments/characterai/adapter.mjs
+          node --check experiments/characterai/mock-worker.mjs
+          node --check experiments/characterai/adapter.test.mjs
+          node --check experiments/characterai/mock-worker.test.mjs
+      - name: Provider contract checks (no API secrets)
+        run: node experiments/characterai/provider-contract.test.mjs
+      - name: Adapter unit tests (no API secrets)
+        run: node experiments/characterai/adapter.test.mjs
+      - name: Cloudflare Worker mock tests (no API secrets)
+        run: node experiments/characterai/mock-worker.test.mjs
