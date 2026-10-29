@@ -1,0 +1,25 @@
+name: Zara Try-On Checks
+on:
+  push:
+    branches:
+      - fix/zara-tryon-readiness
+  pull_request:
+    paths:
+      - 'worker/**'
+      - '.github/workflows/zara-tryon-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tryon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Worker JavaScript syntax
+        run: node --check worker/src/index.js
+      - name: Run offline Try-On contract tests
+        run: node worker/tryon.test.mjs
