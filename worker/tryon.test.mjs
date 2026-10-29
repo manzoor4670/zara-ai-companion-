@@ -22,4 +22,29 @@ response=await worker.fetch(new Request(base,{method:'OPTIONS',headers:{Origin:'
 assert.equal(response.status,403);
 response=await worker.fetch(new Request(base,{method:'OPTIONS',headers:{Origin:origin}}),{});
 assert.equal(response.status,204);
-console.log('PASS: 7 Zara Try-On readiness/request safety checks (offline)');
+
+response=await worker.fetch(new Request(base),{TRYON_PROVIDER:'replicate',REPLICATE_API_TOKEN:'test-token'});
+data=await response.json();
+assert.equal(data.providerConfigured,true);
+response=await ask('POST',{avatar:'data:image/png;base64,AAAA',dress:'data:image/png;base64,AAAA'}, {}, {TRYON_PROVIDER:'replicate'});
+assert.equal(response.status,503);
+const oldFetch=globalThis.fetch;
+try {
+  let called=false;
+  globalThis.fetch=async (url,options)=>{
+    called=true;
+    assert.equal(url,'https://api.replicate.com/v1/models/prunaai/p-image-try-on/predictions');
+    assert.equal(options.headers.Authorization,'Bearer test-token');
+    const payload=JSON.parse(options.body);
+    assert.equal(payload.input.person_image,'data:image/png;base64,AAAA');
+    assert.deepEqual(payload.input.garment_images,['data:image/png;base64,AAAA']);
+    return new Response(JSON.stringify({status:'succeeded',output:'https://replicate.delivery/example.jpg'}),{status:200,headers:{'Content-Type':'application/json'}});
+  };
+  response=await ask('POST',{avatar:'data:image/png;base64,AAAA',dress:'data:image/png;base64,AAAA'}, {}, {TRYON_PROVIDER:'replicate',REPLICATE_API_TOKEN:'test-token'});
+  data=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.image,'https://replicate.delivery/example.jpg');
+  assert.equal(called,true);
+}finally{globalThis.fetch=oldFetch}
+
+console.log('PASS: Zara Try-On readiness and mock Replicate provider checks (offline; no charges)');
