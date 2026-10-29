@@ -41,13 +41,22 @@ jobs:
       - name: Check native bridge
         run: node android/tests/native-bridge.test.mjs
       - name: Build and check Android app
-        run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease --no-daemon
+        run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:assembleDebug --no-daemon
       - name: Prepare unsigned package and signing verifier
         run: |
           mkdir -p android-artifact
           cp android/app/build/outputs/apk/release/app-release-unsigned.apk android-artifact/Zara-online-unsigned.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" android-artifact/apksigner.jar
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-artifact/Zara-online-unsigned.apk > android-artifact/apk-metadata.txt
+      - name: Verify installable debug APK
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zara-android-installable-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: zara-online-android-unsigned
