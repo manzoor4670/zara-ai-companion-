@@ -11,6 +11,7 @@ permissions:
 concurrency:
   group: zara-android-${{ github.ref }}
   cancel-in-progress: true
+# Android PR verification: force a fresh workflow evaluation for PR #33.
 jobs:
   android:
     runs-on: ubuntu-latest
