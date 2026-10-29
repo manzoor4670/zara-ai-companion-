@@ -28,7 +28,7 @@ export default {async fetch(request,env){
       if(!response.ok)return json({error:"Try-on provider rejected the request",status:response.status},502);
       let result=await response.json();
       // Replicate returns output when synchronous wait succeeds; otherwise return a clear retry error.
-      if(result.status!=="succeeded")return json({error:result.status==="failed"?"Image service failed":"Image generation did not finish in time. Please retry.",providerStatus:result.status},502);
+      if(result.status!=="succeeded")return json({error:result.status==="failed"?"Image service failed":"Image generation is still processing; request may incur a charge. Do not submit again immediately.",providerStatus:result.status},502);
       const output=Array.isArray(result.output)?result.output[0]:result.output;
       const image=typeof output==="string"?output:output?.url;
       if(typeof image!=="string"||!/^https:\/\/replicate\.delivery\//.test(image))return json({error:"Try-on provider returned an unsupported image URL"},502);
