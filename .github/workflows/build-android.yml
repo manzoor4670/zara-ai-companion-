@@ -3,6 +3,8 @@ on:
   push:
     branches: ["main", "feat/zara-online-android-apk-20261027", "feat/zara-offline-text"]
     paths: ["android/**", ".github/workflows/build-android.yml"]
+  pull_request:
+    paths: ["android/**", ".github/workflows/build-android.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -45,13 +47,22 @@ jobs:
           echo "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db  /tmp/zara-qwen.gguf" | sha256sum --check
           /tmp/zara-smoke/zara_offline_smoke /tmp/zara-qwen.gguf
       - name: Build and check Android app
-        run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease --no-daemon
+        run: gradle -p android :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:assembleDebug --no-daemon
       - name: Prepare unsigned package and signing verifier
         run: |
           mkdir -p android-artifact
           cp android/app/build/outputs/apk/release/app-release-unsigned.apk android-artifact/Zara-unsigned.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" android-artifact/apksigner.jar
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-artifact/Zara-unsigned.apk > android-artifact/apk-metadata.txt
+      - name: Verify signed debug APK
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zara-installable-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: zara-android-unsigned
