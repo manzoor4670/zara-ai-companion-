@@ -97,7 +97,19 @@ async function drawOutfit(includeAnimationStill=false){
  return true;
  }catch(e){if(revision===outfitRevision)info.textContent=e.message;return false;}
 }
-for(const key of ["outfitX","outfitY","outfitSize","outfitOpacity"])el(key).addEventListener("input",()=>{void drawOutfit()});
+const OUTFIT_SETTINGS_KEY="zara-manual-outfit-controls-v1";
+const outfitControlIds=["outfitX","outfitY","outfitSize","outfitOpacity"];
+try{
+ const saved=JSON.parse(localStorage.getItem(OUTFIT_SETTINGS_KEY)||"{}");
+ for(const key of outfitControlIds){
+  const input=el(key),value=Number(saved[key]);
+  if(saved[key]!==undefined&&Number.isFinite(value)&&value>=Number(input.min)&&value<=Number(input.max))input.value=String(value);
+ }
+}catch{}
+for(const key of outfitControlIds)el(key).addEventListener("input",()=>{
+ try{localStorage.setItem(OUTFIT_SETTINGS_KEY,JSON.stringify(Object.fromEntries(outfitControlIds.map(id=>[id,Number(el(id).value)]))))}catch{}
+ void drawOutfit();
+});
 let outfitDragging=false;
 function moveOutfitPointer(event){
  if(!outfitDragging)return;
