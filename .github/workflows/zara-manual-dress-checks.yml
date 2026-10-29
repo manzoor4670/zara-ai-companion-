@@ -26,6 +26,8 @@ jobs:
           assert(scripts.length>0,'No inline script found');
           scripts.forEach(script=>new vm.Script(script));
           for(const id of ['outfitCanvas','outfitX','outfitY','outfitSize','outfitOpacity','outfitApply','outfitDownload']) assert(html.includes('id="'+id+'"'),id+' missing');
+          for(const id of ['animatedDressFile','clearAnimatedDress','animatedOutfit','stageAnimatedOutfit','showMovingLook','restoreOriginal','reset']) assert(html.includes('id="'+id+'"'),id+' missing');
+          for(const code of ['restoreDressAnimation()', 'animationStore("delete")', 'localStorage.removeItem("zara-show-moving-look")', 'stageOutfit.src!==animatedDressURL', 'outfitCanvas.setPointerCapture(event.pointerId)', 'syncMovingAvatar()']) assert(html.includes(code),code+' missing');
           assert(html.includes('state.manualLook=outfitCanvas.toDataURL('),'Manual look apply missing');
           console.log('PASS: manual outfit UI and embedded JavaScript syntax');
           NODE
