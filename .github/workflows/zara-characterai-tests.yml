@@ -25,8 +25,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate adapter (offline, no API secrets)
+      - name: Check syntax
         run: |
-          node experiments/characterai/provider-contract.test.mjs
-          node experiments/characterai/adapter.test.mjs
-          node experiments/characterai/mock-worker.test.mjs
+          node --check experiments/characterai/adapter.mjs
+          node --check experiments/characterai/mock-worker.mjs
+          node --check experiments/characterai/adapter.test.mjs
+          node --check experiments/characterai/mock-worker.test.mjs
+      - name: Provider contract checks (no API secrets)
+        run: node experiments/characterai/provider-contract.test.mjs
+      - name: Adapter unit tests (no API secrets)
+        run: node experiments/characterai/adapter.test.mjs
+      - name: Cloudflare Worker mock tests (no API secrets)
+        run: node experiments/characterai/mock-worker.test.mjs
