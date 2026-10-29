@@ -141,7 +141,8 @@ function moveOutfitPointer(event){
  if(!rect.width||!rect.height)return;
  el("outfitX").value=String(Math.max(0,Math.min(100,Math.round((event.clientX-rect.left)/rect.width*100))));
  el("outfitY").value=String(Math.max(0,Math.min(100,Math.round((event.clientY-rect.top)/rect.height*100))));
- void drawOutfit();
+ // Programmatic slider changes do not emit input; reuse its save-and-preview handler.
+ el("outfitX").dispatchEvent(new Event("input",{bubbles:true}));
 }
 outfitCanvas.addEventListener("pointerdown",event=>{
  if(!state.avatar||!state.dresses[state.chosen])return;
