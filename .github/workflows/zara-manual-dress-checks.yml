@@ -1,0 +1,31 @@
+name: Zara Manual Dress Editor Checks
+on:
+  push:
+    branches: [feat/zara-free-manual-dress-overlay]
+  pull_request:
+    paths: [avatar.html, .github/workflows/zara-manual-dress-checks.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate embedded JavaScript syntax and manual editor UI
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import vm from 'node:vm';
+          import assert from 'node:assert/strict';
+          const html=fs.readFileSync('avatar.html','utf8');
+          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+          assert(scripts.length>0,'No inline script found');
+          scripts.forEach(script=>new vm.Script(script));
+          for(const id of ['outfitCanvas','outfitX','outfitY','outfitSize','outfitOpacity','outfitApply','outfitDownload']) assert(html.includes('id="'+id+'"'),id+' missing');
+          assert(html.includes('state.manualLook=outfitCanvas.toDataURL('),'Manual look apply missing');
+          console.log('PASS: manual outfit UI and embedded JavaScript syntax');
+          NODE
