@@ -25,9 +25,16 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           log-accepted-android-sdk-licenses: false
-          packages: platform-tools
-      - name: Install Android platform
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
+      - name: Verify Android SDK tools
+        run: |
+          command -v sdkmanager
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
+          sdkmanager --list_installed
       - name: Check native bridge
         run: node android/tests/native-bridge.test.mjs
       - name: Build and check Android app
