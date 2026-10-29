@@ -1,0 +1,27 @@
+name: Zara Studio Routing Check
+on:
+  pull_request:
+    paths: [index.html, avatar.html, .github/workflows/zara-studio-routing.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check free manual editor routing
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),assert=require('assert'),vm=require('vm');
+          const index=fs.readFileSync('index.html','utf8');
+          const avatar=fs.readFileSync('avatar.html','utf8');
+          assert(index.includes("if(tab==='avatar')"),'Avatar route missing');
+          assert(index.includes("new URL('avatar.html',location.href).href"),'Standalone editor not connected');
+          assert(index.includes("removeAttribute('srcdoc')"),'Old bundled editor may override new route');
+          assert(avatar.includes('id="outfitCanvas"'),'Manual editor missing');
+          assert(avatar.includes('id="outfitApply"'),'Apply control missing');
+          const scripts=[...index.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+          for(const script of scripts) new vm.Script(script[1]);
+          console.log('PASS: main chat includes live manual editor route and valid JS');
+          NODE
