@@ -8,8 +8,8 @@ export default {async fetch(request,env){
   const origin=request.headers.get("Origin");
   if(origin&&origin!==ORIGIN)return json({error:"Origin not allowed"},403);
   const url=new URL(request.url);
-  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
-  if(request.method==="GET"&&url.pathname==="/")return json({service:"Zara try-on",ready:!!env.TRYON_PROVIDER_URL,notice:"Image model not included"});
+  if(request.method==="OPTIONS")return origin===ORIGIN?new Response(null,{status:204,headers:cors}):json({error:"Origin not allowed"},403);
+  if(request.method==="GET"&&url.pathname==="/"){let configured=false;try{configured=!!env.TRYON_PROVIDER_URL&&new URL(env.TRYON_PROVIDER_URL).protocol==="https:";}catch{}return json({service:"Zara try-on",ready:configured,notice:configured?"Provider endpoint configured; image generation not yet verified":"Image model not configured"});}
   if(request.method!=="POST"||url.pathname!=="/")return json({error:"Not found"},404);
   if(!origin)return json({error:"Browser origin required"},403);
   if(!env.TRYON_PROVIDER_URL)return json({error:"AI try-on provider is not configured yet"},503);
@@ -18,8 +18,8 @@ export default {async fetch(request,env){
   let body;try{body=await request.json();}catch{return json({error:"Invalid JSON"},400);}
   const validImage=s=>typeof s==="string"&&s.length<2_700_000&&/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s);
   if(!validImage(body.avatar)||!validImage(body.dress))return json({error:"Upload avatar and dress images under the size limit"},400);
-  const provider=new URL(env.TRYON_PROVIDER_URL);
-  if(provider.protocol!=="https:")return json({error:"Provider must be HTTPS"},500);
+  let provider;try{provider=new URL(env.TRYON_PROVIDER_URL);}catch{return json({error:"Invalid try-on provider URL"},503);}
+  if(provider.protocol!=="https:")return json({error:"Provider must be HTTPS"},503);
   try{
     const response=await fetch(provider.toString(),{method:"POST",headers:{"Content-Type":"application/json",...(env.TRYON_PROVIDER_TOKEN?{"Authorization":"Bearer "+env.TRYON_PROVIDER_TOKEN}:{})},body:JSON.stringify({avatar:body.avatar,dress:body.dress,instructions:"Create a realistic, clothed, full-body adult avatar wearing the reference dress. Preserve the avatar's likeness and proportions. No nudity."}),signal:AbortSignal.timeout(55000)});
     if(!response.ok)return json({error:"Image service did not complete the request",status:response.status},502);
