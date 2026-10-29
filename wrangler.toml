@@ -3,3 +3,6 @@ main = "worker/src/index.js"
 compatibility_date = "2026-10-23"
 workers_dev = true
 # GitHub-triggered Cloudflare build configured.
+
+# Isolate Cloudflare branch preview settings from production.
+[previews]
