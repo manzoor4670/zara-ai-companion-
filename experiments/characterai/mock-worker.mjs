@@ -26,7 +26,7 @@ export default {
     }catch {return json({error:'Invalid JSON'},400);}
     // Send function is a test stub, NOT a connection to Character.AI.
     const provider=createCharacterProvider({enabled:true,send:async input=>({reply:input.language==='Urdu'?'یہ صرف آزمائشی جواب ہے۔':'Yeh sirf test jawab hai.'})});
-    try{return json({...await provider.reply(data),mock:true,connected:false});}
+    try{const outcome=await provider.reply(data);return json({...outcome,mock:true,connected:false},outcome.code==='CHARACTERAI_BAD_REQUEST'?400:outcome.error?503:200);}
     catch {return json({error:'Invalid request'},400);}
   }
 };
