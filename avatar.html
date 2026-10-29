@@ -155,7 +155,7 @@ el("outfitApply").onclick=async()=>{
  const previous=state.manualLook;
  state.manualLook=outfitCanvas.toDataURL("image/jpeg",0.78);
  if(!persist()){state.manualLook=previous;el("outfitStatus").textContent="Not saved: storage is full.";return;}
- render();void drawOutfit();el("outfitStatus").textContent="✓ Manual dress look applied. Restore Original se asal photo wapas aa sakti hai.";
+ el("showMovingLook").checked=false;try{localStorage.setItem("zara-show-moving-look","false")}catch{};render();syncMovingAvatar();void drawOutfit();el("outfitStatus").textContent="✓ Manual dress look applied. Restore Original se asal photo wapas aa sakti hai.";
 };
 el("outfitDownload").onclick=async()=>{
  if(!await drawOutfit(true))return;
